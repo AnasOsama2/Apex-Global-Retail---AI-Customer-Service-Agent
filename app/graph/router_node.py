@@ -1,3 +1,4 @@
+import re
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from app.graph.state import AgentState
 from app.llm.groq_client import get_llm
@@ -11,23 +12,25 @@ class PolicyRagInput(BaseModel):
 
 @tool("policy_rag", args_schema=PolicyRagInput)
 def policy_rag(query: str) -> str:
-    """Queries the company policy retriever to answer informational questions about company policies, shipping, returns, refunds, terms, etc."""
-    # This is a placeholder tool definition to bind to the LLM. 
-    # The actual execution happens in the tools node.
+    """Queries the company policy retriever to answer informational questions about company policies, shipping, returns, refunds, terms, etc.
+
+    NOTE: This is a *binding-only* tool definition so the LLM can request it via
+    tool_calls. The actual retrieval logic lives in tools_node.execute_tools_node(),
+    which intercepts calls to 'policy_rag' and delegates to app.rag.retriever.
+    This function body is never executed at runtime.
+    """
     return ""
+
+def _strip_think_tags(text: str) -> str:
+    """Remove <think>...</think> blocks that some models (e.g. Qwen3) emit."""
+    return re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL).strip()
 
 def supervisor_node(state: AgentState):
     print("--- SUPERVISOR NODE ---")
     messages = state.get("messages", [])
     customer_id = state.get("customer_id", "")
     current_order_id = state.get("current_order_id", None)
-    human_handoff = state.get("human_handoff", False)
     
-    # If human handoff is already True, supervisor doesn't need to do anything
-    if human_handoff:
-        print("Human handoff is active. Supervisor routing directly.")
-        return {"messages": [AIMessage(content="Routing to human supervisor...")]}
-
     # Format the system prompt dynamically
     system_content = f"""You are a professional, helpful Customer Service AI Agent for Apex Global Retail.
 Your primary workloads:
@@ -45,7 +48,7 @@ Rules:
 - If the customer wants to check the status, use `get_order_status`.
 """
     
-    # Ensure system message is at the top
+    # Build message list: system message at top, then conversation (without stale system messages)
     full_messages = [SystemMessage(content=system_content)] + [
         msg for msg in messages if not isinstance(msg, SystemMessage)
     ]
@@ -60,6 +63,12 @@ Rules:
     
     # Invoke LLM
     response = llm_with_tools.invoke(trimmed_messages)
+    
+    # P5 fix: When the supervisor responds directly (no tool calls), its raw output
+    # goes to END without passing through response_generator. Strip <think> tags
+    # so they don't leak into the user-facing response.
+    if not (hasattr(response, "tool_calls") and response.tool_calls):
+        response.content = _strip_think_tags(response.content)
     
     return {"messages": [response]}
 

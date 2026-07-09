@@ -31,7 +31,10 @@ def create_graph():
     workflow.add_edge("tools", "response_generator")
     workflow.add_edge("response_generator", END)
     
-    # Compile graph with memory saver checkpointer for session state persistence
+    # P1 note: MemorySaver is in-memory only — all thread state is lost on server
+    # restart. For production, replace with SqliteSaver or PostgresSaver:
+    #   from langgraph.checkpoint.sqlite import SqliteSaver
+    #   memory = SqliteSaver.from_conn_string("checkpoints.db")
     memory = MemorySaver()
     return workflow.compile(checkpointer=memory)
 

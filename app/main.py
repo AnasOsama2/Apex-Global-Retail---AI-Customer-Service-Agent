@@ -5,7 +5,8 @@ from langchain_core.messages import HumanMessage
 from app.graph.builder import graph_instance
 from app.rag.ingest import ingest_pdf
 from app.config import VECTOR_INDEX_PATH
-import sqlite3
+from app.tools.db import get_db_connection
+from typing import Optional
 
 app = FastAPI(title="Apex Global Retail AI Customer Service API")
 
@@ -13,8 +14,6 @@ class ChatRequest(BaseModel):
     thread_id: str
     customer_id: str
     message: str
-
-from typing import Optional
 
 class ChatResponse(BaseModel):
     response: str
@@ -36,7 +35,10 @@ async def chat(request: ChatRequest):
     state = graph_instance.get_state(config)
     
     input_data = {
-        "messages": [HumanMessage(content=request.message)]
+        "messages": [HumanMessage(content=request.message)],
+        # P3 fix: always reset human_handoff so the thread isn't permanently stuck
+        # after a previous handoff. Each new user message starts fresh.
+        "human_handoff": False
     }
     
     # If the state has not been initialized with values, we supply the customer_id
@@ -44,7 +46,6 @@ async def chat(request: ChatRequest):
         print(f"Initializing new conversation thread: {request.thread_id}")
         input_data["customer_id"] = request.customer_id
         input_data["current_order_id"] = None
-        input_data["human_handoff"] = False
     else:
         # If customer_id is changing, we update it
         if state.values.get("customer_id") != request.customer_id:
@@ -92,34 +93,29 @@ async def ingest():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ingestion failed. {str(e)}")
 
+# --- Debug / inspection endpoints (not part of core spec) ---
+
+def _fetch_all_rows(table_name: str) -> list[dict]:
+    """Helper to avoid duplicating raw sqlite3 connection logic (S5 fix)."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT * FROM {table_name}")  # table_name is hardcoded below, not user input
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 @app.get("/db/orders")
 async def get_orders():
-    """
-    Helper endpoint to inspect the database orders (useful for verification).
-    """
+    """Debug endpoint to inspect database orders."""
     try:
-        conn = sqlite3.connect("customer_service_agent.db")
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM orders")
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
+        return _fetch_all_rows("orders")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
 @app.get("/db/customers")
 async def get_customers():
-    """
-    Helper endpoint to inspect the database customers.
-    """
+    """Debug endpoint to inspect database customers."""
     try:
-        conn = sqlite3.connect("customer_service_agent.db")
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM customers")
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
+        return _fetch_all_rows("customers")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

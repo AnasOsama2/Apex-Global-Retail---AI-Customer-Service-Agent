@@ -129,3 +129,10 @@ def db_update_order(order_id: int, shipping_address: Optional[str] = None, quant
         
     conn.close()
     return True
+
+def db_verify_order_ownership(order_id: int, customer_id: str) -> bool:
+    """Returns True if the order exists AND belongs to the given customer."""
+    order = db_get_order(order_id)
+    if not order:
+        return False
+    return order["customer_id"] == customer_id

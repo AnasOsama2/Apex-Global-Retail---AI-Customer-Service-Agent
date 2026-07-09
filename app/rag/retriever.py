@@ -42,7 +42,9 @@ def retrieve_and_grade(query: str) -> str:
     best_match = results[0]
     best_dist = best_match["distance"]
     
-    # Map L2 distance to similarity score: s = 1.0 - dist / 2.0
+    # For unit-normalized vectors: L2² = 2 - 2·cos(θ), so cos(θ) = 1 - L2²/2.
+    # FAISS IndexFlatL2 returns squared L2 distances, making this conversion valid.
+    # If embeddings are ever NOT normalized, this formula will silently produce wrong scores.
     best_score = 1.0 - (best_dist / 2.0)
     
     print(f"RAG search query: '{query}' -> Best chunk distance: {best_dist:.4f}, similarity score: {best_score:.4f}")
