@@ -1,0 +1,25 @@
+customer_service_agent/
+├── .env
+├── requirements.txt
+├── app/
+│   ├── main.py                  # FastAPI entrypoint
+│   ├── config.py                # env loading, constants
+│   ├── graph/
+│   │   ├── state.py              # AgentState TypedDict
+│   │   ├── builder.py            # StateGraph assembly
+│   │   ├── router_node.py        # Supervisor / intent routing
+│   │   ├── response_node.py      # Final response generator
+│   ├── tools/
+│   │   ├── order_tools.py        # create_order, update_order, get_order_status
+│   │   └── db.py                 # mock/real DB access layer
+│   ├── rag/
+│   │   ├── ingest.py             # PDF → chunks → embeddings → FAISS index
+│   │   ├── retriever.py          # similarity search + relevance grading
+│   │   └── vector_store.py       # FAISS load/save wrapper
+│   ├── memory/
+│   │   └── thread_memory.py      # last-5-message trimming logic
+│   └── llm/
+│       └── groq_client.py        # Groq/Qwen model wrapper
+├── data/
+│   └── policies/                 # source PDFs
+└── vector_index/                 # persisted FAISS index + metadata
