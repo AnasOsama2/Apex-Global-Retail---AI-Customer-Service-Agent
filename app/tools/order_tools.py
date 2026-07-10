@@ -7,6 +7,7 @@ class CreateOrderInput(BaseModel):
     customer_id: str = Field(description="The unique identifier for the customer.")
     item_id: str = Field(description="SKU or product identifier.")
     quantity: int = Field(description="Number of units ordered.", gt=0)
+    shipping_address: Optional[str] = Field(default=None, description="Optional custom shipping address for the order. If not provided, the customer's default address will be used.")
 
 class UpdateOrderInput(BaseModel):
     order_id: int = Field(description="The unique identifier for the order to update.")
@@ -17,10 +18,10 @@ class GetOrderStatusInput(BaseModel):
     order_id: int = Field(description="The unique identifier for the order to retrieve status.")
 
 @tool("create_order", args_schema=CreateOrderInput)
-def create_order(customer_id: str, item_id: str, quantity: int) -> str:
+def create_order(customer_id: str, item_id: str, quantity: int, shipping_address: Optional[str] = None) -> str:
     """Executes an order placement in the database. Use this tool when the customer explicitly wants to buy an item."""
     try:
-        order_id = db_create_order(customer_id, item_id, quantity)
+        order_id = db_create_order(customer_id, item_id, quantity, shipping_address)
         return f"Success: Order #{order_id} created for customer {customer_id}."
     except Exception as e:
         return f"Error: Failed to create order. {str(e)}"

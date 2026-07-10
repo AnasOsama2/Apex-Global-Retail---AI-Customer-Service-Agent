@@ -1,4 +1,7 @@
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import faiss
 import PyPDF2
 from sentence_transformers import SentenceTransformer

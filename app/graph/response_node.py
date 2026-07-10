@@ -1,6 +1,7 @@
 from langchain_core.messages import SystemMessage, AIMessage
 from app.graph.state import AgentState
 from app.llm.groq_client import get_llm
+from app.graph.router_node import _strip_think_tags
 
 def response_generator_node(state: AgentState):
     print("--- RESPONSE GENERATOR NODE ---")
@@ -36,7 +37,8 @@ Rules:
     llm = get_llm()
     response = llm.invoke(llm_messages)
     
-    content = response.content
+    # P5 fix: Strip <think> tags so they don't leak into user-facing responses
+    content = _strip_think_tags(response.content)
     state_updates = {}
     
     # Layer 2 Handoff: check if the LLM output requests a handoff
@@ -45,7 +47,8 @@ Rules:
         state_updates["human_handoff"] = True
         # Clean up any technical tags
         content = content.replace("[HANDOFF]", "").strip()
-        response.content = content
-        
+    
+    response.content = content
     state_updates["messages"] = [response]
     return state_updates
+

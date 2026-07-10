@@ -85,18 +85,20 @@ def db_get_order(order_id: int) -> Optional[dict]:
         return dict(row)
     return None
 
-def db_create_order(customer_id: str, item_id: str, quantity: int) -> int:
+def db_create_order(customer_id: str, item_id: str, quantity: int, shipping_address: Optional[str] = None) -> int:
     # Fetch customer to get default shipping address
     customer = db_get_customer(customer_id)
     if not customer:
         raise ValueError(f"Customer {customer_id} does not exist.")
+    
+    addr = shipping_address if shipping_address else customer["shipping_address"]
     
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO orders (customer_id, item_id, quantity, status, shipping_address)
     VALUES (?, ?, ?, 'Pending', ?)
-    """, (customer_id, item_id, quantity, customer["shipping_address"]))
+    """, (customer_id, item_id, quantity, addr))
     order_id = cursor.lastrowid
     conn.commit()
     conn.close()
