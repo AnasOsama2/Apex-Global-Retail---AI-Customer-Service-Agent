@@ -6,7 +6,7 @@ It comes equipped with an interactive **React & Tailwind CSS Visual Sandbox** th
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 * **LangGraph State Orchestration:** Uses a structured state graph to manage multi-turn conversations, tracking state values like `customer_id`, `current_order_id`, and `human_handoff` flags across message threads.
 * **Intent-Based Routing:** A supervisor routing node dynamically evaluates user messages to route them either to RAG-based policy retrieval or database order tools.
@@ -99,7 +99,7 @@ RELEVANCE_THRESHOLD=0.50
 
 ---
 
-## 🚀 Running the Project
+## Running the Project
 
 ### 1. Run Text Ingestion (RAG Setup)
 Before starting the chatbot, you must parse the corporate policies PDF and build the FAISS vector index:
